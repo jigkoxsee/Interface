@@ -8,11 +8,11 @@ __IO uint32_t TimeDisplay = 0;
 
 /* Private functions ---------------------------------------------------------*/
 void delay_ms(__IO uint32_t nTime);	 		//Delay mS
-void TimingDelay_Decrement(void);
+//void TimingDelay_Decrement(void);
 void USART_setup(void);
 void USART_Pin_setup(int COM, USART_InitTypeDef* USART_InitStruct);
 int putChar (int uart, int c);
-void putsUART1(unsigned int *buffer);
+//void putsUART1(unsigned int *buffer);
 void putsUART2(unsigned int *buffer);
 int getChar (int uart);
 void GPIO_setup(void);
@@ -27,10 +27,11 @@ void ledDisplay (uint16_t n);
 void Systick_setup(void);
 void TIM1_setup(void);
 void setTime(void);
+
 //----------ME Varibale----------
-unsigned long sys_ms=0;
-unsigned long sys_ms2 =0;// Keep time base from Systick
-unsigned long ms=0;
+int sys_ms=0;
+int sys_ms2=0;
+int ms=0;
 uint16_t temp;
 uint16_t temp_list[60];
 int hh = 0;
@@ -440,8 +441,7 @@ void USART_setup(void)
 	USART_InitStructure.USART_Parity = USART_Parity_No;
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	//Initial USART1
-	USART_Pin_setup(1, &USART_InitStructure);
+
 	//Initial USART2
 	USART_Pin_setup(2, &USART_InitStructure);
 }
@@ -558,27 +558,7 @@ int putChar (int uart, int c)
 	return c;
 }
 
-void putsUART1(unsigned int *buffer)
-{
-	char * temp_ptr = (char *) buffer;
-	int c;
-	while(*temp_ptr != '\0')     // End of String
-	{
-		c = *temp_ptr++;
-		if (c == '\n')        // \n = CR = Enter
-		{ 
-			putChar (1, 0x0D);    // Enter
-		}
-		else if(c=='\r')      // \r = LF = Line Feed
-		{
-			putChar (1, 0x0A);     // Line Feed
-		}
-		else
-		{
-			putChar (1, c);     // Character
-		}
-	}
-}
+
 
 void putsUART2(unsigned int *buffer)
 {
@@ -602,21 +582,6 @@ void putsUART2(unsigned int *buffer)
 	}
 }
 
-int getChar (int uart) 
-{
-	if (uart == 1)
-	{
-	/* Loop until the USARTz Receive Data Register is not empty */
-		while(USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET){}
-			return (USART_ReceiveData(USART1));
-	}
-	else
-	{
-		/* Loop until the USARTz Receive Data Register is not empty */
-		while(USART_GetFlagStatus(USART2, USART_FLAG_RXNE) == RESET){}
-			return (USART_ReceiveData(USART2));
-	}
-}
 /*******************************************************************************
 * Function Name  : RCC_setup
 * Description    : Configures the different system clocks.
@@ -695,26 +660,12 @@ else
 void GPIO_setup(){
 	
 	GPIO_InitTypeDef GPIO_InitStructure;   
-   // Enable GPIOE clock
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOE | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOC ,ENABLE);
 	
-   // Configure PE8 and PE15 as Output push-pull(connect with LED) 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 
-	| GPIO_Pin_15 ;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(GPIOE, &GPIO_InitStructure);
-	
-	 // Enable GPIOA clock
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 ;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
-	
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 ;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
 	
 }
 
@@ -742,13 +693,6 @@ void NVIC_setup(void)
 { 
 	NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);   
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn; //temper
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0; 
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3; 
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; 
-	NVIC_Init(&NVIC_InitStructure); 
-
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn; //wakeup
@@ -768,12 +712,6 @@ void EXTI_setup()
 { 
 	EXTI_InitTypeDef EXTI_InitStructure; 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO,ENABLE); 
-	GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource13); 
-	EXTI_InitStructure.EXTI_Line = EXTI_Line13; 
-	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt; 
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling; 
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE; 
-	EXTI_Init(&EXTI_InitStructure); 
 	
 	GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource0); 
 	EXTI_InitStructure.EXTI_Line = EXTI_Line0; 
@@ -797,19 +735,6 @@ void EXTI0_IRQHandler(void)
 		EXTI_ClearITPendingBit(EXTI_Line0);   // Clear the EXTI line 0 pending bit  
 	} 
 } 		
-
-void EXTI15_10_IRQHandler(void)
-{
-	if(EXTI_GetITStatus(EXTI_Line13) != RESET) 
-	{ 
-  // Toggle LED7 at PE15 pin  
-		GPIO_WriteBit(GPIOE, GPIO_Pin_8,(BitAction)((1-GPIO_ReadOutputDataBit(GPIOE, GPIO_Pin_8)))); 
-		putChar(2, 'T'); 
-		delay(300);
-
-	EXTI_ClearITPendingBit(EXTI_Line13);   // Clear the EXTI line 0 pending bit  
-} 
-}	
 
 void TIM1_setup() 
 { 
@@ -875,24 +800,3 @@ void SysTick_Handler(void)
 	}
 }
 
-void TimingDelay_Decrement(void)
-{
-	if (TimingDelay != 0x00)
-	{ 
-		TimingDelay--;
-	}
-}
-
-void displayNumberUSART2(uint16_t n){
-	/* Loop until the end of transmission */
-	putChar(2,'0'+n/1000);
-	n%=1000;
-	putChar(2,'0'+n/100);
-	n%=100;
-	putChar(2,'0'+n/10);
-	n%=10;
-	putChar(2,'0'+n);
-	putChar(2,7);
-	putChar(2,219);
-	putChar(2,13);
-}
