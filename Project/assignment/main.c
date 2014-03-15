@@ -54,11 +54,12 @@ void display_adc(void){
 	for(i = 0;i <20;i++){
 		text[i] = ' ';
 	}
-	text[6]='0'+temp/100;
-	text[7]='0'+(temp%100)/10;
-	text[8]='0'+temp%10;
-	text[9]=' ';
-	text[10]='C';	
+	text[8]='0'+temp/100;
+	text[9]='0'+(temp%100)/10;
+	text[10]='0'+temp%10;
+	text[11]=' ';
+	text[12]='C';
+	LCD_SetTextColor(Magenta);
 	LCD_DisplayStringLine(Line3, text);
 	
 }
@@ -76,6 +77,7 @@ void display_clock(void){
 	clock[11] = ':';
 	clock[12] = '0'+(ss/10);
 	clock[13] = '0'+(ss%10);
+	LCD_SetTextColor(Black);
 	LCD_DisplayStringLine(Line1, clock);
 }
 
@@ -92,6 +94,7 @@ void halt(void){
 					countdown--;
 			}
 			if(countdown < 0){
+				LCD_SetTextColor(Red);
 				LCD_DisplayStringLine(Line8, haltText);
 				isHalt = 1;
 				while(1){
@@ -103,6 +106,7 @@ void halt(void){
 				haltText[10] = ' ';
 				countdown = 5;
 		}
+		LCD_SetTextColor(Red);
 		LCD_DisplayStringLine(Line8, haltText);
 }
 
@@ -118,6 +122,7 @@ void alert_fn(){
 			for(i = 0;i < 20;i++){
 				alertText[i] = ' ';
 			}
+			LCD_SetTextColor(Red);
 			LCD_DisplayStringLine(Line7, alertText);
 		}
 		else{
@@ -134,6 +139,7 @@ void alert_fn(){
 				alertText[9] = 'R';
 				alertText[10] = 'T';
 			}
+			LCD_SetTextColor(Red);
 			LCD_DisplayStringLine(Line7, alertText);
 		}
 }
@@ -188,12 +194,13 @@ void temp_average(void){
 	putChar(2,'\r');
 }
 
-void displayProgress(uint16_t temp) 
+void displayProgress() 
 { 
 	uint8_t text[20]; 	
   uint16_t i;
 	uint16_t level;
 	uint16_t d=7; 
+	
 	for(i=3;i<17;i++) 
   { 
     text[i] = 128; 
@@ -203,6 +210,9 @@ void displayProgress(uint16_t temp)
   { 
     text[i+3] = 127; 
   } 
+	LCD_SetTextColor(Green);
+	if(temp>80)
+		LCD_SetTextColor(Red);
   LCD_DisplayStringLine(Line5,text); 
 }
 void setTime(void){
@@ -259,8 +269,7 @@ void setTime(void){
 							else
 							{
 								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,10);
-								putChar(2,13);
+								putChar(2,7);
 							}
 						}
 						else if(firstDigit)
@@ -277,8 +286,7 @@ void setTime(void){
 							else
 							{
 								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,10);
-								putChar(2,13);
+								putChar(2,7);
 							}
 						}
 					}
@@ -295,8 +303,7 @@ void setTime(void){
 							else
 							{
 								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,10);
-								putChar(2,13);
+								putChar(2,7);
 							}
 						}
 						else if(firstDigit)
@@ -313,8 +320,7 @@ void setTime(void){
 							else
 							{
 								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,10);
-								putChar(2,13);
+								putChar(2,7);
 							}
 						}
 					 
@@ -331,8 +337,7 @@ void setTime(void){
 							else
 							{
 								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,10);
-								putChar(2,13);
+								putChar(2,7);
 							}
 						}
 						else if(firstDigit)
@@ -349,6 +354,7 @@ void setTime(void){
 							else
 							{
 								putsUART2((unsigned int*)"Wrong Input\n\r");
+								putChar(2,7);
 							}
 						}
 					 
@@ -376,14 +382,15 @@ int main()
 	TIM1_setup();
 	Systick_setup();
 	
-	LCD_Clear(Cyan); 
+	LCD_Clear(Cyan);
+	LCD_SetBackColor(Cyan);
 	LCD_SetTextColor(Red);
 	for(i=0;i<60;i++){
 		temp_list[i]=0;			
 	}
 	
-	putsUART2((unsigned int*)"\t\t\tWelcome\n\r");
-	putsUART2((unsigned int*)"\t\t\t\tto\n\r");
+	putsUART2((unsigned int*)"\tWelcome\n\r");
+	putsUART2((unsigned int*)"\t\t to\n\r");
 	putsUART2((unsigned int*)"Computer Interfacing : Assignment\n\r\n\r");
 	
 	putsUART2((unsigned int*)"Press S to enter Clock setting\n\r");
@@ -396,7 +403,7 @@ int main()
 		temp_save();
 		display_clock();
 		display_adc();
-		displayProgress(temp);
+		displayProgress();
 		setTime();
 
 	} 
@@ -845,7 +852,8 @@ void Systick_setup(void){
 }
 void SysTick_Handler(void)
 {
-	if(!isSet) sys_ms++; // Increse millisec 1 time
+	if(!isSet)
+		sys_ms++; // Increse millisec 1 time
 	if(sys_ms%1000 == 0){
 		sys_ms=0;
 		ss++;
