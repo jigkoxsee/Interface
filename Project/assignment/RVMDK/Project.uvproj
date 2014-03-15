@@ -7,7 +7,7 @@
 
   <Targets>
     <Target>
-      <TargetName>ET-STM32F-ARM-KIT</TargetName>
+      <TargetName>CE51-Com-Interface-Assignment</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
       <TargetOption>
@@ -700,13 +700,6 @@
         </Group>
         <Group>
           <GroupName>Doc</GroupName>
-          <Files>
-            <File>
-              <FileName>readme.txt</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\readme.txt</FilePath>
-            </File>
-          </Files>
         </Group>
       </Groups>
     </Target>

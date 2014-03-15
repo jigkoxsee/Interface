@@ -21,3 +21,5 @@
 .\obj\main.o: ..\..\..\Libraries\STM32F10x_StdPeriph_Driver\inc\misc.h
 .\obj\main.o: ..\..\..\Utilities\et_stm32f_arm_kit.h
 .\obj\main.o: ..\..\..\Utilities\et_stm32f_arm_kit_lcd.h
+.\obj\main.o: ..\..\..\Libraries\STM32F10x_StdPeriph_Driver\inc\stm32f10x_tim.h
+.\obj\main.o: C:\Keil\ARM\ARMCC\bin\..\include\math.h
