@@ -26,8 +26,10 @@ void display16(uint16_t n);
 void ledDisplay (uint16_t n);
 void Systick_setup(void);
 void TIM1_setup(void);
+void setTime(void);
 //----------ME Varibale----------
-unsigned long sys_ms=0; // Keep time base from Systick
+unsigned long sys_ms=0;
+unsigned long sys_ms2 =0;// Keep time base from Systick
 unsigned long ms=0;
 uint16_t temp;
 uint16_t temp_list[60];
@@ -35,7 +37,15 @@ int hh = 0;
 int mm = 0;
 int ss = 0;
 int empty = 0;
-int isHalt = 0,isAlert = 0;
+int isHalt = 0;
+int countdown = 5;
+int isSet=0;
+int setSec=0;
+int setMin=0;
+int setHour=0;
+int firstDigit=0;
+int secDigit=0;
+char msg[10];
 
 //----------ME FN----------------
 void display_adc(void){
@@ -44,11 +54,8 @@ void display_adc(void){
 	for(i = 0;i <20;i++){
 		text[i] = ' ';
 	}
-	//adc%=1000;
 	text[6]='0'+temp/100;
-	//adc%=100;
 	text[7]='0'+(temp%100)/10;
-	//adc%=10;
 	text[8]='0'+temp%10;
 	text[9]=' ';
 	text[10]='C';	
@@ -75,40 +82,46 @@ void display_clock(void){
 
 void halt(void){
 	int i;
-  uint8_t haltText[20];
-	for(i = 0;i < 10;i++){
-		haltText[i] = ' ';
+	uint8_t haltText[20];
+	for(i = 0;i < 20;i++){
+			haltText[i] = ' ';
 	}
-	for(i = 5;i >= 0;i++){
-		while(ms%1000 != 0);
-		if(temp < 80){
-			haltText[10] = ' ';
-			isHalt = 0;
-			break;
+		if(temp>80 && isHalt == 0){
+			if(countdown >= 0){
+					haltText[10] = '0'+countdown;
+					countdown--;
+			}
+			if(countdown < 0){
+				LCD_DisplayStringLine(Line8, haltText);
+				isHalt = 1;
+				while(1){
+					putChar(2,7);
+				}
+			}
 		}
-		haltText[10] = i;
+		else{
+				haltText[10] = ' ';
+				countdown = 5;
+		}
 		LCD_DisplayStringLine(Line8, haltText);
-	}
-	while(1);
 }
 
 void alert_fn(){
 	int i;
 	uint8_t alertText[20];
-	isAlert = 1,isHalt = 1;
 	for(i = 0;i < 20;i++){
 		alertText[i] = ' ';
 	}
 
-	//while(isAlert){
 		if(temp < 80){
-			isAlert = 0;
+			isHalt = 0;
 			for(i = 0;i < 20;i++){
 				alertText[i] = ' ';
 			}
 			LCD_DisplayStringLine(Line7, alertText);
 		}
-		if(isAlert){
+		else{
+			putChar(2,7);
 			if(empty == 1){
 				for(i = 0;i < 11;i++){
 					alertText[i] = ' ';
@@ -123,8 +136,6 @@ void alert_fn(){
 			}
 			LCD_DisplayStringLine(Line7, alertText);
 		}
-		//halt();
-	//}
 }
 
 void temp_save(void){
@@ -136,25 +147,13 @@ void temp_save(void){
 			empty =0;
 		while(ADC_GetFlagStatus(ADC1,ADC_FLAG_EOC)==RESET); 
 		temp =(ADC_GetConversionValue(ADC1)+10)/41;
-	//	if(temp>80){
 			alert_fn();
-	//	}
 		for(i=59;i>0;i--){
 			temp_list[i]=temp_list[i-1];
-			/*putChar(2,'A');
-			putChar(2,'D');
-			putChar(2,'C');
-			putChar(2,' ');
-			putChar(2,'0'+i/10);
-			putChar(2,'0'+i%10);
-			putChar(2,' ');
-			putChar(2,'0'+temp_list[i]/100);
-			putChar(2,'0'+(temp_list[i]%100)/10);
-			putChar(2,'0'+temp_list[i]%10);
-			putChar(2,'\t');*/
 		}
 		temp_list[0]=temp;
 	}
+
 }
 
 void temp_average(void){
@@ -178,30 +177,7 @@ void temp_average(void){
 		putChar(2,',');
 	}
 	avg/=60;
-	putChar(2,'\n');
-	putChar(2,'\r');
-	putChar(2,'A');
-	putChar(2,'v');
-	putChar(2,'e');
-	putChar(2,'r');
-	putChar(2,'a');
-	putChar(2,'g');
-	putChar(2,'e');
-	putChar(2,' ');
-	putChar(2,'T');
-	putChar(2,'e');
-	putChar(2,'m');
-	putChar(2,'p');
-	putChar(2,'e');
-	putChar(2,'r');
-	putChar(2,'a');
-	putChar(2,'t');
-	putChar(2,'u');
-	putChar(2,'r');
-	putChar(2,'e');
-	putChar(2,' ');
-	putChar(2,'=');
-	putChar(2,' ');
+	putsUART2((unsigned int*)"Average Temperature = ");
 
 	if(avg>=100)
 		putChar(2,'0'+avg/100);
@@ -229,7 +205,162 @@ void displayProgress(uint16_t temp)
   } 
   LCD_DisplayStringLine(Line5,text); 
 }
+void setTime(void){
+	  char in;
+    if(!USART_GetFlagStatus(USART2, USART_FLAG_RXNE) == RESET){
+			in = (USART_ReceiveData(USART2));
+				if(!isSet && in == 's')
+				{
+					isSet = 1;
+					putsUART2((unsigned int*)"Set clock\n\r");
+					putsUART2((unsigned int*)"Press h to set Hour\n\r");
+					putsUART2((unsigned int*)"Press m to set Minute\n\r");
+					putsUART2((unsigned int*)"Press c to set Second\n\r");
+					putChar(2,7);
 
+				}
+				else if(isSet){
+					if(in=='c') {
+						setSec=1;
+						setMin=0;
+						setHour=0;
+						secDigit=1;
+						putsUART2((unsigned int*)"Set Second\n\r");
+						putsUART2((unsigned int*)"Second (SS) = ");
+					
+					} 
+					else if(in=='m') {
+						setSec=0;
+						setMin=1;
+						setHour=0;
+						secDigit=1;
+						putsUART2((unsigned int*)"Set Minute\n\r");
+						putsUART2((unsigned int*)"Minute (MM) = ");
+					} 
+					else if(in=='h') {
+						setSec=0;
+						setMin=0;
+						setHour=1;
+						secDigit=1;
+						putsUART2((unsigned int*)"Set Hour\n\r");
+						putsUART2((unsigned int*)"Hour (HH) = ");
+
+					}
+					
+					else if(setSec){
+						if(secDigit)
+						{
+							if(in>='0' && in<='5'){
+								putChar(2,in);
+								ss = ss%10+10*(in-'0');
+								secDigit=0;
+								firstDigit=1;
+							}
+							else
+							{
+								putsUART2((unsigned int*)"Wrong Input\n\r");
+								putChar(2,10);
+								putChar(2,13);
+							}
+						}
+						else if(firstDigit)
+						{
+							if(in>='0' && in<='9'){
+								putChar(2,in);
+								putChar(2,10);
+								putChar(2,13);
+								ss = (ss/10)*10+in-'0';
+								secDigit=0;
+								firstDigit=0;
+								setSec=0;
+							}
+							else
+							{
+								putsUART2((unsigned int*)"Wrong Input\n\r");
+								putChar(2,10);
+								putChar(2,13);
+							}
+						}
+					}
+					else if(setMin){
+						if(secDigit)
+						{
+							if(in>='0' && in<='5'){
+								putChar(2,in);
+								putChar(2,13);
+								mm = mm%10+10*(in-'0');
+								secDigit=0;
+								firstDigit=1;
+							}
+							else
+							{
+								putsUART2((unsigned int*)"Wrong Input\n\r");
+								putChar(2,10);
+								putChar(2,13);
+							}
+						}
+						else if(firstDigit)
+						{
+							if(in>='0' && in<='9'){
+								putChar(2,in);
+								putChar(2,10);
+								putChar(2,13);
+								mm = (mm/10)*10+in-'0';
+								secDigit=0;
+								firstDigit=0;
+								setMin=0;
+							}
+							else
+							{
+								putsUART2((unsigned int*)"Wrong Input\n\r");
+								putChar(2,10);
+								putChar(2,13);
+							}
+						}
+					 
+					}
+					else if(setHour){
+						if(secDigit)
+						{
+							if(in>='0' && in<='2'){
+								putChar(2,in);
+								hh = hh%10+10*(in-'0');
+								secDigit=0;
+								firstDigit=1;
+							}
+							else
+							{
+								putsUART2((unsigned int*)"Wrong Input\n\r");
+								putChar(2,10);
+								putChar(2,13);
+							}
+						}
+						else if(firstDigit)
+						{
+							if((in>='0' && in<='9' && (hh/10)<2) || (in>='0' && in<='3' && (hh/10)==2)){
+								putChar(2,in);
+								putChar(2,10);
+								putChar(2,13);
+								hh = (hh/10)*10+in-'0';
+								secDigit=0;
+								firstDigit=0;
+								setHour=0;
+							}
+							else
+							{
+								putsUART2((unsigned int*)"Wrong Input\n\r");
+							}
+						}
+					 
+					}
+					else if((in==10 || in==13)){
+						 putsUART2((unsigned int*)"Clock setting finish\n\r");
+						 isSet=0;
+					} 
+				}
+				
+    }
+}
 
 int main()
 {
@@ -244,39 +375,21 @@ int main()
 	LCD_Setup();
 	TIM1_setup();
 	Systick_setup();
-	LCD_Clear(White); 
+	
+	LCD_Clear(Cyan); 
 	LCD_SetTextColor(Red);
 	for(i=0;i<60;i++){
 		temp_list[i]=0;			
 	}
 	
-	putChar(2,'\n');
-	putChar(2,'\r');
-	putChar(2,'N');
-	putChar(2,'o');
-	putChar(2,'o');
-	putChar(2,' ');
-	putChar(2,'M');
-	putChar(2,'a');
-	putChar(2,'l');
-	putChar(2,'e');
-	putChar(2,'e');
-	putChar(2,' ');
-	putChar(2,'m');
-	putChar(2,'e');
-	putChar(2,'e');
-	putChar(2,' ');
-	putChar(2,'m');
-	putChar(2,'a');
-	putChar(2,'e');
-	putChar(2,'w');
-	putChar(2,' ');
-	putChar(2,'m');
-	putChar(2,'a');
-	putChar(2,'e');
-	putChar(2,'w');
-	putChar(2,'\n');
-	putChar(2,'\r');
+	putsUART2((unsigned int*)"\t\t\tWelcome\n\r");
+	putsUART2((unsigned int*)"\t\t\t\tto\n\r");
+	putsUART2((unsigned int*)"Computer Interfacing : Assignment\n\r\n\r");
+	
+	putsUART2((unsigned int*)"Press S to enter Clock setting\n\r");
+	putChar(2,7);
+	putChar(2,7);
+	putChar(2,7);
 
 	while(1)     
 	{ 
@@ -284,6 +397,7 @@ int main()
 		display_clock();
 		display_adc();
 		displayProgress(temp);
+		setTime();
 
 	} 
 }
@@ -669,7 +783,7 @@ void EXTI0_IRQHandler(void)
 	{ 
   // Toggle LED7 at PE15 pin  
 		GPIO_WriteBit(GPIOE, GPIO_Pin_15,(BitAction)((1-GPIO_ReadOutputDataBit(GPIOE, GPIO_Pin_15)))); 
-		if(isHalt = 0){
+		if(isHalt == 0){
 			temp_average();
 		}
 		
@@ -731,7 +845,7 @@ void Systick_setup(void){
 }
 void SysTick_Handler(void)
 {
-	sys_ms++; // Increse millisec 1 time
+	if(!isSet) sys_ms++; // Increse millisec 1 time
 	if(sys_ms%1000 == 0){
 		sys_ms=0;
 		ss++;
@@ -745,9 +859,12 @@ void SysTick_Handler(void)
 		}
 		if(hh>=24){
 			hh=0;
-		}
+		}	
 	}
-	
+	sys_ms2++;
+	if(sys_ms2%1000 == 0){
+		halt();
+	}
 }
 
 void TimingDelay_Decrement(void)
