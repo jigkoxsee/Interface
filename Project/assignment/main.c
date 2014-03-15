@@ -29,8 +29,8 @@ void TIM1_setup(void);
 //----------ME Varibale----------
 unsigned long sys_ms=0; // Keep time base from Systick
 unsigned long ms=0;
-uint16_t adc;
-uint16_t adc_list[60];
+uint16_t temp;
+uint16_t temp_list[60];
 int hh = 0;
 int mm = 0;
 int ss = 0;
@@ -42,12 +42,12 @@ void display_adc(void){
 	for(i = 0;i <20;i++){
 		text[i] = ' ';
 	}
-	adc%=1000;
-	text[6]='0'+adc/100;
-	adc%=100;
-	text[7]='0'+adc/10;
-	adc%=10;
-	text[8]='0'+adc;
+	//adc%=1000;
+	text[6]='0'+temp/100;
+	//adc%=100;
+	text[7]='0'+(temp%100)/10;
+	//adc%=10;
+	text[8]='0'+temp%10;
 	text[9]=' ';
 	text[10]='C';	
 	LCD_DisplayStringLine(Line3, text);
@@ -70,31 +70,96 @@ void display_clock(void){
 	LCD_DisplayStringLine(Line1, clock);
 }
 
-void adc_save(void){
+
+void alert_fn(){
+
+}
+
+void temp_save(void){
+	int i;
 	if(ms%500 == 0){
 		while(ADC_GetFlagStatus(ADC1,ADC_FLAG_EOC)==RESET); 
-		adc =(ADC_GetConversionValue(ADC1)*100)/4096;		
+		temp =(ADC_GetConversionValue(ADC1)+10)/41;
+		if(temp>80)
+			alert_fn();
+		for(i=59;i>0;i--){
+			temp_list[i]=temp_list[i-1];
+			/*putChar(2,'A');
+			putChar(2,'D');
+			putChar(2,'C');
+			putChar(2,' ');
+			putChar(2,'0'+i/10);
+			putChar(2,'0'+i%10);
+			putChar(2,' ');
+			putChar(2,'0'+temp_list[i]/100);
+			putChar(2,'0'+(temp_list[i]%100)/10);
+			putChar(2,'0'+temp_list[i]%10);
+			putChar(2,'\t');*/
+		}
+		temp_list[0]=temp;
 	}
 }
 
-void displayProgress(uint16_t temp)
-{
-  uint8_t text[20] = "   OOOOOOOOOOOOOO   ";
-	int i;
-	int level = rintf(temp / 7.14);
-	for(i=0;i<level;i++)
-	{
-	    text[i+3] = 'X';
+void temp_average(void){
+	int i=0;
+	int avg=0;
+	
+	for(i=0;i<60;i++){
+		avg+=temp_list[i];
+		if(i%6==0){
+			putChar(2,'\n');
+			putChar(2,'\r');
+		}
+		
+		if(temp_list[i]>=100)
+			putChar(2,'0'+temp_list[i]/100);
+		
+		if(temp_list[i]>=10)
+			putChar(2,'0'+(temp_list[i]%100)/10);
+		
+		putChar(2,'0'+temp_list[i]%10);
+		putChar(2,',');
 	}
-	LCD_DisplayStringLine(Line5,text);
+	avg/=60;
+	putChar(2,'\n');
+	putChar(2,'\r');
+	putChar(2,'A');
+	putChar(2,'v');
+	putChar(2,'e');
+	putChar(2,'r');
+	putChar(2,'a');
+	putChar(2,'g');
+	putChar(2,'e');
+	putChar(2,' ');
+	putChar(2,'T');
+	putChar(2,'e');
+	putChar(2,'m');
+	putChar(2,'p');
+	putChar(2,'e');
+	putChar(2,'r');
+	putChar(2,'a');
+	putChar(2,'t');
+	putChar(2,'u');
+	putChar(2,'r');
+	putChar(2,'e');
+	putChar(2,' ');
+	putChar(2,'=');
+	putChar(2,' ');
+
+	if(avg>=100)
+		putChar(2,'0'+avg/100);
+	if(avg>=10)
+		putChar(2,'0'+(avg%100)/10);
+	putChar(2,'0'+avg%10);
+	putChar(2,'\n');
+	putChar(2,'\r');
 }
 
+void displayProgress(uint16_t temp) { uint8_t text[20] = "   OOOOOOOOOOOOOO   "; uint16_t i; uint16_t d=7; uint16_t level; level = temp/d; for(i=0;i<level;i++) { text[i+3] = 'X'; } LCD_DisplayStringLine(Line5,text); }
 
 
 int main()
 {
-
- 
 	
 	int i =0;
 	RCC_setup(); 
@@ -107,17 +172,46 @@ int main()
 	TIM1_setup();
 	Systick_setup();
 	LCD_Clear(White); 
-//	LCD_SetBackColor(Cyan); 
 	LCD_SetTextColor(Red);
-
+	for(i=0;i<60;i++){
+		temp_list[i]=0;			
+	}
+	
+	putChar(2,'\n');
+	putChar(2,'\r');
+	putChar(2,'N');
+	putChar(2,'o');
+	putChar(2,'o');
+	putChar(2,' ');
+	putChar(2,'M');
+	putChar(2,'a');
+	putChar(2,'l');
+	putChar(2,'e');
+	putChar(2,'e');
+	putChar(2,' ');
+	putChar(2,'m');
+	putChar(2,'e');
+	putChar(2,'e');
+	putChar(2,' ');
+	putChar(2,'m');
+	putChar(2,'a');
+	putChar(2,'e');
+	putChar(2,'w');
+	putChar(2,' ');
+	putChar(2,'m');
+	putChar(2,'a');
+	putChar(2,'e');
+	putChar(2,'w');
+	putChar(2,'\n');
+	putChar(2,'\r');
 
 	while(1)     
 	{ 
-		adc_save();
+		temp_save();
 		display_clock();
 		display_adc();
-		displayProgress(adc);
-		displayNumberUSART2(adc);
+		displayProgress(temp);
+
 	} 
 }
 
@@ -469,7 +563,7 @@ void NVIC_setup(void)
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; 
 	NVIC_Init(&NVIC_InitStructure); 
 
-	NVIC_InitStructure.NVIC_IRQChannel = SysTick_IRQn; // systick
+	NVIC_InitStructure.NVIC_IRQChannel = (uint8_t)SysTick_IRQn; // systick
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -497,16 +591,13 @@ void EXTI_setup()
 
 void EXTI0_IRQHandler(void)  
 {  
-	static uint16_t count = 0; 
+//	static uint16_t count = 0; 
 	if(EXTI_GetITStatus(EXTI_Line0) != RESET) 
 	{ 
   // Toggle LED7 at PE15 pin  
 		GPIO_WriteBit(GPIOE, GPIO_Pin_15,(BitAction)((1-GPIO_ReadOutputDataBit(GPIOE, GPIO_Pin_15)))); 
-		putChar(2, 'W'); 
-		count++;   
 		
-		displayNumberUSART2(count);
-		delay(300); 
+		temp_average();
 		
 		EXTI_ClearITPendingBit(EXTI_Line0);   // Clear the EXTI line 0 pending bit  
 	} 
@@ -549,7 +640,6 @@ void TIM1_setup()
 void TIM1_UP_IRQHandler(void) 
 { 
 	ms++; // Increment millisec 1 time 
-	
 	TIM_ClearITPendingBit(TIM1,TIM_IT_Update); // Clear TIM1 Update pending bit 
 }
 
@@ -596,20 +686,14 @@ void TimingDelay_Decrement(void)
 
 void displayNumberUSART2(uint16_t n){
 	/* Loop until the end of transmission */
-	int c=0,temp = n,mod = 1;
-	int i;
-	while(temp!=0){
-		temp /=10;
-		c++;
-	}
-	for(i =1;i < c;i++){
-		mod *= 10;
-	}
-	while(c !=0){
-		putChar(2,n/mod + 0x30);
-		n %= mod;
-		mod /= 10;
-		c--;
-	}
-	putChar(2,' ');
+	putChar(2,'0'+n/1000);
+	n%=1000;
+	putChar(2,'0'+n/100);
+	n%=100;
+	putChar(2,'0'+n/10);
+	n%=10;
+	putChar(2,'0'+n);
+	putChar(2,7);
+	putChar(2,219);
+	putChar(2,13);
 }
