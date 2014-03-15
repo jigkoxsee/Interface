@@ -34,6 +34,8 @@ uint16_t temp_list[60];
 int hh = 0;
 int mm = 0;
 int ss = 0;
+int empty = 0;
+int isHalt = 0,isAlert = 0;
 
 //----------ME FN----------------
 void display_adc(void){
@@ -71,17 +73,72 @@ void display_clock(void){
 }
 
 
-void alert_fn(){
+void halt(void){
+	int i;
+  uint8_t haltText[20];
+	for(i = 0;i < 10;i++){
+		haltText[i] = ' ';
+	}
+	for(i = 5;i >= 0;i++){
+		while(ms%1000 != 0);
+		if(temp < 80){
+			haltText[10] = ' ';
+			isHalt = 0;
+			break;
+		}
+		haltText[10] = i;
+		LCD_DisplayStringLine(Line8, haltText);
+	}
+	while(1);
+}
 
+void alert_fn(){
+	int i;
+	uint8_t alertText[20];
+	isAlert = 1,isHalt = 1;
+	for(i = 0;i < 20;i++){
+		alertText[i] = ' ';
+	}
+
+	//while(isAlert){
+		if(temp < 80){
+			isAlert = 0;
+			for(i = 0;i < 20;i++){
+				alertText[i] = ' ';
+			}
+			LCD_DisplayStringLine(Line7, alertText);
+		}
+		if(isAlert){
+			if(empty == 1){
+				for(i = 0;i < 11;i++){
+					alertText[i] = ' ';
+				}
+			}
+			else{
+				alertText[6] = 'A';
+				alertText[7] = 'L';
+				alertText[8] = 'E';
+				alertText[9] = 'R';
+				alertText[10] = 'T';
+			}
+			LCD_DisplayStringLine(Line7, alertText);
+		}
+		//halt();
+	//}
 }
 
 void temp_save(void){
 	int i;
 	if(ms%500 == 0){
+		if(empty == 0)
+			empty =1;
+		else
+			empty =0;
 		while(ADC_GetFlagStatus(ADC1,ADC_FLAG_EOC)==RESET); 
 		temp =(ADC_GetConversionValue(ADC1)+10)/41;
-		if(temp>80)
+	//	if(temp>80){
 			alert_fn();
+	//	}
 		for(i=59;i>0;i--){
 			temp_list[i]=temp_list[i-1];
 			/*putChar(2,'A');
@@ -155,7 +212,23 @@ void temp_average(void){
 	putChar(2,'\r');
 }
 
-void displayProgress(uint16_t temp) { uint8_t text[20] = "   OOOOOOOOOOOOOO   "; uint16_t i; uint16_t d=7; uint16_t level; level = temp/d; for(i=0;i<level;i++) { text[i+3] = 'X'; } LCD_DisplayStringLine(Line5,text); }
+void displayProgress(uint16_t temp) 
+{ 
+	uint8_t text[20]; 	
+  uint16_t i;
+	uint16_t level;
+	uint16_t d=7; 
+	for(i=3;i<17;i++) 
+  { 
+    text[i] = 128; 
+  }
+ level = temp/d; 
+  for(i=0;i<level;i++) 
+  { 
+    text[i+3] = 127; 
+  } 
+  LCD_DisplayStringLine(Line5,text); 
+}
 
 
 int main()
@@ -596,8 +669,9 @@ void EXTI0_IRQHandler(void)
 	{ 
   // Toggle LED7 at PE15 pin  
 		GPIO_WriteBit(GPIOE, GPIO_Pin_15,(BitAction)((1-GPIO_ReadOutputDataBit(GPIOE, GPIO_Pin_15)))); 
-		
-		temp_average();
+		if(isHalt = 0){
+			temp_average();
+		}
 		
 		EXTI_ClearITPendingBit(EXTI_Line0);   // Clear the EXTI line 0 pending bit  
 	} 
