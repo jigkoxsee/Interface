@@ -155,8 +155,6 @@ void alert_fn(){
 		LCD_SetTextColor(Red);
 		LCD_DisplayStringLine(Line7, alertText);
 	}
-	display_adc();
-	displayProgress();
 }
 
 //save temparature to array
@@ -173,6 +171,8 @@ void temp_save(void){
 		temp_list[i]=temp_list[i-1];
 	}
 	temp_list[0]=temp;
+	display_adc();
+	displayProgress();
 }
 
 //Calculate average temperature function
@@ -530,10 +530,10 @@ void SysTick_Handler(void){
 	if(sys_ms%1000 == 0){ //Increase ss every 12 sec
 		sys_ms=0;
 		ss++;
+		display_clock();
 		if(ss >=60){ //increase 1 minute
 			ss =0;
 			mm++;
-			display_clock();
 		}
 		if(mm >=60){ //increase 1 hour
 			mm =0;

@@ -3,11 +3,11 @@
 <title>Static Call Graph - [.\Obj\CE51-Com-Interface-Assignment.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\Obj\CE51-Com-Interface-Assignment.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5.03 [Build 76]: Last Updated: Sun Mar 16 19:21:28 2014
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5.03 [Build 76]: Last Updated: Sun Mar 16 23:35:11 2014
 <BR><P>
-<H3>Maximum Stack Usage =        224 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
+<H3>Maximum Stack Usage =        192 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
-SysTick_Handler &rArr; temp_save &rArr; alert_fn &rArr; display_adc &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
+SysTick_Handler &rArr; temp_save &rArr; alert_fn &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
 <P>
 <H3>
 Mutually Recursive functions
@@ -505,8 +505,8 @@ Global Symbols
 </UL>
 <BR>[Called By]<UL><LI><a href="#[96]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;halt
 <LI><a href="#[94]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_clock
-<LI><a href="#[a6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_adc
-<LI><a href="#[a7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;displayProgress
+<LI><a href="#[a7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_adc
+<LI><a href="#[a6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;displayProgress
 <LI><a href="#[a4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;alert_fn
 </UL>
 
@@ -565,8 +565,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[47]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 <LI><a href="#[96]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;halt
 <LI><a href="#[94]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_clock
-<LI><a href="#[a6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_adc
-<LI><a href="#[a7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;displayProgress
+<LI><a href="#[a7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_adc
+<LI><a href="#[a6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;displayProgress
 <LI><a href="#[a4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;alert_fn
 </UL>
 
@@ -876,8 +876,8 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[97]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Systick_setup
 </UL>
 
-<P><STRONG><a name="[9]"></a>SysTick_Handler</STRONG> (Thumb, 134 bytes, Stack size 16 bytes, main.o(i.SysTick_Handler))
-<BR><BR>[Stack]<UL><LI>Max Depth = 224<LI>Call Chain = SysTick_Handler &rArr; temp_save &rArr; alert_fn &rArr; display_adc &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
+<P><STRONG><a name="[9]"></a>SysTick_Handler</STRONG> (Thumb, 138 bytes, Stack size 16 bytes, main.o(i.SysTick_Handler))
+<BR><BR>[Stack]<UL><LI>Max Depth = 192<LI>Call Chain = SysTick_Handler &rArr; temp_save &rArr; alert_fn &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
 </UL>
 <BR>[Calls]<UL><LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;temp_save
 <LI><a href="#[96]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;halt
@@ -979,34 +979,32 @@ Global Symbols
 
 <P><STRONG><a name="[b6]"></a>__scatterload_zeroinit</STRONG> (Thumb, 14 bytes, Stack size unknown bytes, handlers.o(i.__scatterload_zeroinit), UNUSED)
 
-<P><STRONG><a name="[a4]"></a>alert_fn</STRONG> (Thumb, 128 bytes, Stack size 40 bytes, main.o(i.alert_fn))
-<BR><BR>[Stack]<UL><LI>Max Depth = 192<LI>Call Chain = alert_fn &rArr; display_adc &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
+<P><STRONG><a name="[a4]"></a>alert_fn</STRONG> (Thumb, 120 bytes, Stack size 40 bytes, main.o(i.alert_fn))
+<BR><BR>[Stack]<UL><LI>Max Depth = 160<LI>Call Chain = alert_fn &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
 </UL>
 <BR>[Calls]<UL><LI><a href="#[a5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LCD_SetTextColor
 <LI><a href="#[67]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LCD_DisplayStringLine
 <LI><a href="#[9b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;putChar
-<LI><a href="#[a6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_adc
-<LI><a href="#[a7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;displayProgress
 </UL>
 <BR>[Called By]<UL><LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;temp_save
 </UL>
 
-<P><STRONG><a name="[a7]"></a>displayProgress</STRONG> (Thumb, 82 bytes, Stack size 32 bytes, main.o(i.displayProgress))
+<P><STRONG><a name="[a6]"></a>displayProgress</STRONG> (Thumb, 82 bytes, Stack size 32 bytes, main.o(i.displayProgress))
 <BR><BR>[Stack]<UL><LI>Max Depth = 152<LI>Call Chain = displayProgress &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
 </UL>
 <BR>[Calls]<UL><LI><a href="#[a5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LCD_SetTextColor
 <LI><a href="#[67]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LCD_DisplayStringLine
 </UL>
-<BR>[Called By]<UL><LI><a href="#[a4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;alert_fn
+<BR>[Called By]<UL><LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;temp_save
 </UL>
 
-<P><STRONG><a name="[a6]"></a>display_adc</STRONG> (Thumb, 104 bytes, Stack size 32 bytes, main.o(i.display_adc))
+<P><STRONG><a name="[a7]"></a>display_adc</STRONG> (Thumb, 104 bytes, Stack size 32 bytes, main.o(i.display_adc))
 <BR><BR>[Stack]<UL><LI>Max Depth = 152<LI>Call Chain = display_adc &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
 </UL>
 <BR>[Calls]<UL><LI><a href="#[a5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LCD_SetTextColor
 <LI><a href="#[67]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LCD_DisplayStringLine
 </UL>
-<BR>[Called By]<UL><LI><a href="#[a4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;alert_fn
+<BR>[Called By]<UL><LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;temp_save
 </UL>
 
 <P><STRONG><a name="[94]"></a>display_clock</STRONG> (Thumb, 122 bytes, Stack size 32 bytes, main.o(i.display_clock))
@@ -1076,11 +1074,13 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[10]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;EXTI0_IRQHandler
 </UL>
 
-<P><STRONG><a name="[95]"></a>temp_save</STRONG> (Thumb, 80 bytes, Stack size 16 bytes, main.o(i.temp_save))
-<BR><BR>[Stack]<UL><LI>Max Depth = 208<LI>Call Chain = temp_save &rArr; alert_fn &rArr; display_adc &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
+<P><STRONG><a name="[95]"></a>temp_save</STRONG> (Thumb, 90 bytes, Stack size 16 bytes, main.o(i.temp_save))
+<BR><BR>[Stack]<UL><LI>Max Depth = 176<LI>Call Chain = temp_save &rArr; alert_fn &rArr; LCD_DisplayStringLine &rArr; LCD_DisplayChar &rArr; LCD_DrawChar &rArr; LCD_SetCursor &rArr; LCD_WriteReg &rArr; LCD_WriteRegIndex &rArr; LCD_CS_StartByte
 </UL>
 <BR>[Calls]<UL><LI><a href="#[ab]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ADC_GetFlagStatus
 <LI><a href="#[ac]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ADC_GetConversionValue
+<LI><a href="#[a7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_adc
+<LI><a href="#[a6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;displayProgress
 <LI><a href="#[a4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;alert_fn
 </UL>
 <BR>[Called By]<UL><LI><a href="#[9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;SysTick_Handler
