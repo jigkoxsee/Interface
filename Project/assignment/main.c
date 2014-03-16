@@ -24,7 +24,7 @@ void Systick_setup(void);
 //----------ME Varibale----------
 int sys_ms=0;
 int sys_ms2=0;
-int ms=0;
+int ms_temp=0;
 uint16_t temp;
 uint16_t temp_list[60];
 int hh = 0;
@@ -48,8 +48,10 @@ void display_adc(void){
 	for(i = 0;i <20;i++){
 		text[i] = ' ';
 	}
-	text[8]='0'+temp/100;
-	text[9]='0'+(temp%100)/10;
+	if(temp>=100)
+		text[8]='0'+temp/100;
+	if(temp%100>=10)
+		text[9]='0'+(temp%100)/10;
 	text[10]='0'+temp%10;
 	text[11]=' ';
 	text[12]='C';
@@ -74,6 +76,27 @@ void display_clock(void){
 	clock[13] = '0'+(ss%10);
 	LCD_SetTextColor(Black);
 	LCD_DisplayStringLine(Line1, clock);
+}
+
+//Display progress bar use ascii 127 and 128
+void displayProgress() 
+{ 
+	uint8_t text[20]; 	
+	uint16_t i;
+	uint16_t level;
+	uint16_t d=7; 
+	
+	for(i=3;i<17;i++){ 
+		text[i] = 128; 
+	}
+	level = temp/d; 
+	for(i=0;i<level;i++){ 
+		text[i+3] = 127; 
+	} 
+	LCD_SetTextColor(Green);
+	if(temp>80)
+		LCD_SetTextColor(Red);
+	LCD_DisplayStringLine(Line5,text); 
 }
 
 //halt function 
@@ -182,31 +205,13 @@ void temp_average(void){
 }
 
 
-//Display progress bar use ascii 127 and 128
-void displayProgress() 
-{ 
-	uint8_t text[20]; 	
-	uint16_t i;
-	uint16_t level;
-	uint16_t d=7; 
-	
-	for(i=3;i<17;i++){ 
-		text[i] = 128; 
-	}
-	level = temp/d; 
-	for(i=0;i<level;i++){ 
-		text[i+3] = 127; 
-	} 
-	LCD_SetTextColor(Green);
-	if(temp>80)
-		LCD_SetTextColor(Red);
-	LCD_DisplayStringLine(Line5,text); 
-}
+
 
 
 int main()
 {
 	int i =0;
+	//start setup
 	RCC_setup(); 
 	GPIO_setup();
 	USART_setup(); 
@@ -523,24 +528,25 @@ void Systick_setup(void){
 }
 
 void SysTick_Handler(void){
+	ms_temp++;
 	if(!isSet)
 		sys_ms++; // Increse millisec 1 time when not set the clock
 	if(sys_ms%1000 == 0){ //Increase ss every 12 sec
 		sys_ms=0;
 		ss++;
-		if(ss >=60){
+		if(ss >=60){ //increase 1 minute
 			ss =0;
 			mm++;
 		}
-		if(mm >=60){
+		if(mm >=60){ //increase 1 hour
 			mm =0;
 			hh++;
 		}
-		if(hh>=24){
+		if(hh>=24){//reset hour to 0
 			hh=0;
 		}	
 	}
-	if(sys_ms%500 == 0){//Increase ss every 12 sec
+	if(ms_temp%500 == 0){//Increase ss every 12 sec
 		temp_save();
 	}
 	sys_ms2++;
@@ -551,7 +557,7 @@ void SysTick_Handler(void){
 
 void USART2_IRQHandler(void){
 	char in;
-	if(USART_GetITStatus(USART2,USART_IT_RXNE) != RESET){
+	if(USART_GetITStatus(USART2,USART_IT_RXNE) != RESET&&isHalt==0){
 		in = (USART_ReceiveData(USART2));
 		if(!isSet && in == 's'){ //start setting function
 			isSet = 1;
@@ -563,7 +569,7 @@ void USART2_IRQHandler(void){
 			putChar(2,7);
 
 		}else if(isSet){
-			if(in=='c') {
+			if(in=='c') { //input c to set second
 				setSec=1;
 				setMin=0;
 				setHour=0;
@@ -571,14 +577,14 @@ void USART2_IRQHandler(void){
 				putsUART2((unsigned int*)"Set Second\n\r");
 				putsUART2((unsigned int*)"Second (SS) = ");
 				
-			}else if(in=='m') {
+			}else if(in=='m') { //input m to set minute
 				setSec=0;
 				setMin=1;
 				setHour=0;
 				secDigit=1;
 				putsUART2((unsigned int*)"Set Minute\n\r");
 				putsUART2((unsigned int*)"Minute (MM) = ");
-			}else if(in=='h') {
+			}else if(in=='h') { //input h to set hour
 				setSec=0;
 				setMin=0;
 				setHour=1;
@@ -586,18 +592,18 @@ void USART2_IRQHandler(void){
 				putsUART2((unsigned int*)"Set Hour\n\r");
 				putsUART2((unsigned int*)"Hour (HH) = ");
 
-			}else if(setSec){
-				if(secDigit){
+			}else if(setSec){ 
+				if(secDigit){ //set second digit before first digit
 					if(in>='0' && in<='5'){
 						putChar(2,in);
 						ss = ss%10+10*(in-'0');
 						secDigit=0;
-						firstDigit=1;
+						firstDigit=1; //finish set second digit start set first digit
 					}else{
 						putsUART2((unsigned int*)"Wrong Input\n\r");
 						putChar(2,7);
 					}
-				}else if(firstDigit){
+				}else if(firstDigit){ //first digit
 					if(in>='0' && in<='9'){
 						putChar(2,in);
 						putsUART2((unsigned int*)"\n\r");
@@ -612,17 +618,17 @@ void USART2_IRQHandler(void){
 					}
 				}
 			}else if(setMin){
-				if(secDigit){
+				if(secDigit){//set second digit before first digit
 					if(in>='0' && in<='5'){
 						putChar(2,in);
 						mm = mm%10+10*(in-'0');
 						secDigit=0;
-						firstDigit=1;
+						firstDigit=1;//finish set second digit start set first digit
 					}else{
 						putsUART2((unsigned int*)"Wrong Input\n\r");
 						putChar(2,7);
 					}
-				}else if(firstDigit){
+				}else if(firstDigit){//first digit
 					if(in>='0' && in<='9'){
 						putChar(2,in);
 						putsUART2((unsigned int*)"\n\r");
@@ -637,17 +643,17 @@ void USART2_IRQHandler(void){
 					}
 				}
 			}else if(setHour){
-				if(secDigit){
+				if(secDigit){//set second digit before first digit
 					if(in>='0' && in<='2'){
 						putChar(2,in);
 						hh = hh%10+10*(in-'0');
 						secDigit=0;
-						firstDigit=1;
+						firstDigit=1;//finish set second digit start set first digit
 					}else{
 						putsUART2((unsigned int*)"Wrong Input\n\r");
 						putChar(2,7);
 					}
-				}else if(firstDigit){
+				}else if(firstDigit){//first digit
 					if((in>='0' && in<='9' && (hh/10)<2) || (in>='0' && in<='3' && (hh/10)==2)){
 						putChar(2,in);
 						putsUART2((unsigned int*)"\n\r");
@@ -661,7 +667,7 @@ void USART2_IRQHandler(void){
 						putChar(2,7);
 					}
 				}
-			}else if((in==10 || in==13)){
+			}else if((in==10 || in==13)){ //input enter to exit setting
 				putsUART2((unsigned int*)"Clock setting finish\n\r");
 				isSet=0;
 			}else{
