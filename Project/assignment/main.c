@@ -17,7 +17,6 @@ void RCC_setup(void);
 void delay(unsigned long);  
 void NVIC_setup(void); 
 void EXTI_setup(void);
-void displayNumberUSART2(uint16_t n);
 void ADC_setup(void);
 void Systick_setup(void);
 
@@ -156,6 +155,8 @@ void alert_fn(){
 		LCD_SetTextColor(Red);
 		LCD_DisplayStringLine(Line7, alertText);
 	}
+	display_adc();
+	displayProgress();
 }
 
 //save temparature to array
@@ -233,12 +234,7 @@ int main()
 	putsUART2((unsigned int*)"Computer Interfacing : Assignment\n\r\n\r");
 	putsUART2((unsigned int*)"Press S to enter Clock setting\n\r");
 
-	while(1){
-		//display all
-		display_clock();
-		display_adc();
-		displayProgress();
-	} 
+	while(1);
 }
 
 /*******************************************************************************
@@ -537,6 +533,7 @@ void SysTick_Handler(void){
 		if(ss >=60){ //increase 1 minute
 			ss =0;
 			mm++;
+			display_clock();
 		}
 		if(mm >=60){ //increase 1 hour
 			mm =0;
