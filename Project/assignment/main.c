@@ -41,7 +41,7 @@ int firstDigit=0;
 int secDigit=0;
 char msg[10];
 
-//----------ME FN----------------
+//function for display adc value to LCD
 void display_adc(void){
 	int i;
 	uint8_t text[20]; 
@@ -56,6 +56,8 @@ void display_adc(void){
 	LCD_SetTextColor(Magenta);
 	LCD_DisplayStringLine(Line3, text);
 }
+
+//function for display clock to LCD
 void display_clock(void){
 	int i;
 	uint8_t clock[20];
@@ -74,7 +76,7 @@ void display_clock(void){
 	LCD_DisplayStringLine(Line1, clock);
 }
 
-
+//halt function 
 void halt(void){
 	int i;
 	uint8_t haltText[20];
@@ -82,17 +84,17 @@ void halt(void){
 		haltText[i] = ' ';
 	}
 	if(temp>80 && isHalt == 0){
-		if(countdown >= 0){
+		if(countdown >= 0){ 
 			haltText[10] = '0'+countdown;
 			countdown--;
 		}
-		if(countdown < 0){
+		if(countdown < 0){// if countdown to 0 set isHalt to 1 and loop infinite
 			LCD_SetTextColor(Red);
 			LCD_DisplayStringLine(Line8, haltText);
 			isHalt = 1;
 			while(1);
 		}
-	}else{
+	}else{// if in 5 sec temperature cooldown countdown reset to 5
 		haltText[10] = ' ';
 		countdown = 5;
 	}
@@ -100,6 +102,7 @@ void halt(void){
 	LCD_DisplayStringLine(Line8, haltText);
 }
 
+//alert function 
 void alert_fn(){
 	int i;
 	uint8_t alertText[20];
@@ -107,14 +110,14 @@ void alert_fn(){
 		alertText[i] = ' ';
 	}
 
-	if(temp <= 80){ // ko <=
+	if(temp <= 80){ // if temp <= 80 show nothing
 		isHalt = 0;
 		for(i = 0;i < 20;i++){
 			alertText[i] = ' ';
 		}
 		LCD_SetTextColor(Red);
 		LCD_DisplayStringLine(Line7, alertText);
-	}else{
+	}else{// if temp > 80 show red alert text
 		putChar(2,7);
 		if(empty == 1){
 			for(i = 0;i < 11;i++){
@@ -132,6 +135,7 @@ void alert_fn(){
 	}
 }
 
+//save temparature to array
 void temp_save(void){
 	int i;
 	if(empty == 0)
@@ -147,6 +151,7 @@ void temp_save(void){
 	temp_list[0]=temp;
 }
 
+//Calculate average temperature function
 void temp_average(void){
 	int i=0;
 	int avg=0;
@@ -167,7 +172,7 @@ void temp_average(void){
 	}
 	avg/=60;
 	putsUART2((unsigned int*)"Average Temperature = ");
-
+//show average temp.
 	if(avg>=100)
 		putChar(2,'0'+avg/100);
 	if(avg>=10)
@@ -176,6 +181,8 @@ void temp_average(void){
 	putsUART2((unsigned int*)"\n\r");
 }
 
+
+//Display progress bar use ascii 127 and 128
 void displayProgress() 
 { 
 	uint8_t text[20]; 	
@@ -222,6 +229,7 @@ int main()
 	putsUART2((unsigned int*)"Press S to enter Clock setting\n\r");
 
 	while(1){
+		//display all
 		display_clock();
 		display_adc();
 		displayProgress();
@@ -474,7 +482,7 @@ void NVIC_setup(void){
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 	
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1); //usart2
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
@@ -496,7 +504,7 @@ void EXTI_setup(){
 
 void EXTI0_IRQHandler(void){  
 	if(EXTI_GetITStatus(EXTI_Line0) != RESET){
-		if(isHalt == 0)
+		if(isHalt == 0) //if program not halt do the interrupt
 			temp_average();
 		EXTI_ClearITPendingBit(EXTI_Line0);   // Clear the EXTI line 0 pending bit  
 	} 
@@ -516,8 +524,8 @@ void Systick_setup(void){
 
 void SysTick_Handler(void){
 	if(!isSet)
-		sys_ms++; // Increse millisec 1 time
-	if(sys_ms%1000 == 0){
+		sys_ms++; // Increse millisec 1 time when not set the clock
+	if(sys_ms%1000 == 0){ //Increase ss every 12 sec
 		sys_ms=0;
 		ss++;
 		if(ss >=60){
@@ -532,11 +540,11 @@ void SysTick_Handler(void){
 			hh=0;
 		}	
 	}
-	if(sys_ms%500 == 0){
+	if(sys_ms%500 == 0){//Increase ss every 12 sec
 		temp_save();
 	}
 	sys_ms2++;
-	if(sys_ms2%1000 == 0){
+	if(sys_ms2%1000 == 0){ //check halt function every second
 		halt();
 	}
 }
@@ -545,12 +553,13 @@ void USART2_IRQHandler(void){
 	char in;
 	if(USART_GetITStatus(USART2,USART_IT_RXNE) != RESET){
 		in = (USART_ReceiveData(USART2));
-		if(!isSet && in == 's'){
+		if(!isSet && in == 's'){ //start setting function
 			isSet = 1;
 			putsUART2((unsigned int*)"Set clock\n\r");
 			putsUART2((unsigned int*)"Press h to set Hour\n\r");
 			putsUART2((unsigned int*)"Press m to set Minute\n\r");
 			putsUART2((unsigned int*)"Press c to set Second\n\r");
+			putsUART2((unsigned int*)"Press Enter to exit\n\r");
 			putChar(2,7);
 
 		}else if(isSet){
@@ -596,6 +605,7 @@ void USART2_IRQHandler(void){
 						secDigit=0;
 						firstDigit=0;
 						setSec=0;
+						putsUART2((unsigned int*)"Set Second finish\n\r");
 					}else{
 						putsUART2((unsigned int*)"Wrong Input\n\r");
 						putChar(2,7);
@@ -620,6 +630,7 @@ void USART2_IRQHandler(void){
 						secDigit=0;
 						firstDigit=0;
 						setMin=0;
+						putsUART2((unsigned int*)"Set Minute finish\n\r");
 					}else{
 						putsUART2((unsigned int*)"Wrong Input\n\r");
 						putChar(2,7);
@@ -644,6 +655,7 @@ void USART2_IRQHandler(void){
 						secDigit=0;
 						firstDigit=0;
 						setHour=0;
+						putsUART2((unsigned int*)"Set Hour finish\n\r");
 					}else{
 						putsUART2((unsigned int*)"Wrong Input\n\r");
 						putChar(2,7);
@@ -652,7 +664,12 @@ void USART2_IRQHandler(void){
 			}else if((in==10 || in==13)){
 				putsUART2((unsigned int*)"Clock setting finish\n\r");
 				isSet=0;
-			} 
+			}else{
+				putsUART2((unsigned int*)"Press h to set Hour\n\r");
+				putsUART2((unsigned int*)"Press m to set Minute\n\r");
+				putsUART2((unsigned int*)"Press c to set Second\n\r");
+				putsUART2((unsigned int*)"Press Enter to exit\n\r");
+			}
 		}	
 		USART_ClearITPendingBit(USART2,USART_IT_RXNE);
 	}
