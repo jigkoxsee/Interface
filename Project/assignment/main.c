@@ -7,14 +7,11 @@ static __IO uint32_t TimingDelay;
 __IO uint32_t TimeDisplay = 0;
 
 /* Private functions ---------------------------------------------------------*/
-void delay_ms(__IO uint32_t nTime);	 		//Delay mS
-//void TimingDelay_Decrement(void);
 void USART_setup(void);
 void USART_Pin_setup(int COM, USART_InitTypeDef* USART_InitStruct);
-int putChar (int uart, int c);
-//void putsUART1(unsigned int *buffer);
+void USART2_IRQHandler(void);
 void putsUART2(unsigned int *buffer);
-int getChar (int uart);
+int putChar (int uart, int c);
 void GPIO_setup(void);
 void RCC_setup(void);
 void delay(unsigned long);  
@@ -22,11 +19,7 @@ void NVIC_setup(void);
 void EXTI_setup(void);
 void displayNumberUSART2(uint16_t n);
 void ADC_setup(void);
-void display16(uint16_t n);
-void ledDisplay (uint16_t n);
 void Systick_setup(void);
-void TIM1_setup(void);
-void setTime(void);
 
 //----------ME Varibale----------
 int sys_ms=0;
@@ -62,7 +55,6 @@ void display_adc(void){
 	text[12]='C';
 	LCD_SetTextColor(Magenta);
 	LCD_DisplayStringLine(Line3, text);
-	
 }
 void display_clock(void){
 	int i;
@@ -87,28 +79,25 @@ void halt(void){
 	int i;
 	uint8_t haltText[20];
 	for(i = 0;i < 20;i++){
-			haltText[i] = ' ';
+		haltText[i] = ' ';
 	}
-		if(temp>80 && isHalt == 0){
-			if(countdown >= 0){
-					haltText[10] = '0'+countdown;
-					countdown--;
-			}
-			if(countdown < 0){
-				LCD_SetTextColor(Red);
-				LCD_DisplayStringLine(Line8, haltText);
-				isHalt = 1;
-				while(1){
-					putChar(2,7);
-				}
-			}
+	if(temp>80 && isHalt == 0){
+		if(countdown >= 0){
+			haltText[10] = '0'+countdown;
+			countdown--;
 		}
-		else{
-				haltText[10] = ' ';
-				countdown = 5;
+		if(countdown < 0){
+			LCD_SetTextColor(Red);
+			LCD_DisplayStringLine(Line8, haltText);
+			isHalt = 1;
+			while(1);
 		}
-		LCD_SetTextColor(Red);
-		LCD_DisplayStringLine(Line8, haltText);
+	}else{
+		haltText[10] = ' ';
+		countdown = 5;
+	}
+	LCD_SetTextColor(Red);
+	LCD_DisplayStringLine(Line8, haltText);
 }
 
 void alert_fn(){
@@ -118,49 +107,44 @@ void alert_fn(){
 		alertText[i] = ' ';
 	}
 
-		if(temp <= 80){ // ko <=
-			isHalt = 0;
-			for(i = 0;i < 20;i++){
+	if(temp <= 80){ // ko <=
+		isHalt = 0;
+		for(i = 0;i < 20;i++){
+			alertText[i] = ' ';
+		}
+		LCD_SetTextColor(Red);
+		LCD_DisplayStringLine(Line7, alertText);
+	}else{
+		putChar(2,7);
+		if(empty == 1){
+			for(i = 0;i < 11;i++){
 				alertText[i] = ' ';
 			}
-			LCD_SetTextColor(Red);
-			LCD_DisplayStringLine(Line7, alertText);
+		}else{
+			alertText[6] = 'A';
+			alertText[7] = 'L';
+			alertText[8] = 'E';
+			alertText[9] = 'R';
+			alertText[10] = 'T';
 		}
-		else{
-			putChar(2,7);
-			if(empty == 1){
-				for(i = 0;i < 11;i++){
-					alertText[i] = ' ';
-				}
-			}
-			else{
-				alertText[6] = 'A';
-				alertText[7] = 'L';
-				alertText[8] = 'E';
-				alertText[9] = 'R';
-				alertText[10] = 'T';
-			}
-			LCD_SetTextColor(Red);
-			LCD_DisplayStringLine(Line7, alertText);
-		}
+		LCD_SetTextColor(Red);
+		LCD_DisplayStringLine(Line7, alertText);
+	}
 }
 
 void temp_save(void){
 	int i;
-	if(ms%500 == 0){
-		if(empty == 0)
-			empty =1;
-		else
-			empty =0;
-		while(ADC_GetFlagStatus(ADC1,ADC_FLAG_EOC)==RESET); 
-		temp =(ADC_GetConversionValue(ADC1)+10)/41;
-			alert_fn();
-		for(i=59;i>0;i--){
-			temp_list[i]=temp_list[i-1];
-		}
-		temp_list[0]=temp;
+	if(empty == 0)
+		empty =1;
+	else
+		empty =0;
+	while(ADC_GetFlagStatus(ADC1,ADC_FLAG_EOC)==RESET); 
+	temp =(ADC_GetConversionValue(ADC1)+10)/41;
+	alert_fn();
+	for(i=59;i>0;i--){
+		temp_list[i]=temp_list[i-1];
 	}
-
+	temp_list[0]=temp;
 }
 
 void temp_average(void){
@@ -169,10 +153,8 @@ void temp_average(void){
 	
 	for(i=0;i<60;i++){
 		avg+=temp_list[i];
-		if(i%6==0){
-			putChar(2,'\n');
-			putChar(2,'\r');
-		}
+		if(i%6==0)
+			putsUART2((unsigned int*)"\n\r");
 		
 		if(temp_list[i]>=100)
 			putChar(2,'0'+temp_list[i]/100);
@@ -191,187 +173,32 @@ void temp_average(void){
 	if(avg>=10)
 		putChar(2,'0'+(avg%100)/10);
 	putChar(2,'0'+avg%10);
-	putChar(2,'\n');
-	putChar(2,'\r');
+	putsUART2((unsigned int*)"\n\r");
 }
 
 void displayProgress() 
 { 
 	uint8_t text[20]; 	
-  uint16_t i;
+	uint16_t i;
 	uint16_t level;
 	uint16_t d=7; 
 	
-	for(i=3;i<17;i++) 
-  { 
-    text[i] = 128; 
-  }
- level = temp/d; 
-  for(i=0;i<level;i++) 
-  { 
-    text[i+3] = 127; 
-  } 
+	for(i=3;i<17;i++){ 
+		text[i] = 128; 
+	}
+	level = temp/d; 
+	for(i=0;i<level;i++){ 
+		text[i+3] = 127; 
+	} 
 	LCD_SetTextColor(Green);
 	if(temp>80)
 		LCD_SetTextColor(Red);
-  LCD_DisplayStringLine(Line5,text); 
+	LCD_DisplayStringLine(Line5,text); 
 }
-void setTime(void){
-	  char in;
-    if(!USART_GetFlagStatus(USART2, USART_FLAG_RXNE) == RESET){
-			in = (USART_ReceiveData(USART2));
-				if(!isSet && in == 's')
-				{
-					isSet = 1;
-					putsUART2((unsigned int*)"Set clock\n\r");
-					putsUART2((unsigned int*)"Press h to set Hour\n\r");
-					putsUART2((unsigned int*)"Press m to set Minute\n\r");
-					putsUART2((unsigned int*)"Press c to set Second\n\r");
-					putChar(2,7);
 
-				}
-				else if(isSet){
-					if(in=='c') {
-						setSec=1;
-						setMin=0;
-						setHour=0;
-						secDigit=1;
-						putsUART2((unsigned int*)"Set Second\n\r");
-						putsUART2((unsigned int*)"Second (SS) = ");
-					
-					} 
-					else if(in=='m') {
-						setSec=0;
-						setMin=1;
-						setHour=0;
-						secDigit=1;
-						putsUART2((unsigned int*)"Set Minute\n\r");
-						putsUART2((unsigned int*)"Minute (MM) = ");
-					} 
-					else if(in=='h') {
-						setSec=0;
-						setMin=0;
-						setHour=1;
-						secDigit=1;
-						putsUART2((unsigned int*)"Set Hour\n\r");
-						putsUART2((unsigned int*)"Hour (HH) = ");
-
-					}
-					
-					else if(setSec){
-						if(secDigit)
-						{
-							if(in>='0' && in<='5'){
-								putChar(2,in);
-								ss = ss%10+10*(in-'0');
-								secDigit=0;
-								firstDigit=1;
-							}
-							else
-							{
-								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,7);
-							}
-						}
-						else if(firstDigit)
-						{
-							if(in>='0' && in<='9'){
-								putChar(2,in);
-								putChar(2,10);
-								putChar(2,13);
-								ss = (ss/10)*10+in-'0';
-								secDigit=0;
-								firstDigit=0;
-								setSec=0;
-							}
-							else
-							{
-								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,7);
-							}
-						}
-					}
-					else if(setMin){
-						if(secDigit)
-						{
-							if(in>='0' && in<='5'){
-								putChar(2,in);
-								putChar(2,13);
-								mm = mm%10+10*(in-'0');
-								secDigit=0;
-								firstDigit=1;
-							}
-							else
-							{
-								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,7);
-							}
-						}
-						else if(firstDigit)
-						{
-							if(in>='0' && in<='9'){
-								putChar(2,in);
-								putChar(2,10);
-								putChar(2,13);
-								mm = (mm/10)*10+in-'0';
-								secDigit=0;
-								firstDigit=0;
-								setMin=0;
-							}
-							else
-							{
-								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,7);
-							}
-						}
-					 
-					}
-					else if(setHour){
-						if(secDigit)
-						{
-							if(in>='0' && in<='2'){
-								putChar(2,in);
-								hh = hh%10+10*(in-'0');
-								secDigit=0;
-								firstDigit=1;
-							}
-							else
-							{
-								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,7);
-							}
-						}
-						else if(firstDigit)
-						{
-							if((in>='0' && in<='9' && (hh/10)<2) || (in>='0' && in<='3' && (hh/10)==2)){
-								putChar(2,in);
-								putChar(2,10);
-								putChar(2,13);
-								hh = (hh/10)*10+in-'0';
-								secDigit=0;
-								firstDigit=0;
-								setHour=0;
-							}
-							else
-							{
-								putsUART2((unsigned int*)"Wrong Input\n\r");
-								putChar(2,7);
-							}
-						}
-					 
-					}
-					else if((in==10 || in==13)){
-						 putsUART2((unsigned int*)"Clock setting finish\n\r");
-						 isSet=0;
-					} 
-				}
-				
-    }
-}
 
 int main()
 {
-	
 	int i =0;
 	RCC_setup(); 
 	GPIO_setup();
@@ -380,7 +207,6 @@ int main()
 	EXTI_setup(); 
 	ADC_setup();
 	LCD_Setup();
-	TIM1_setup();
 	Systick_setup();
 	
 	LCD_Clear(Cyan);
@@ -393,20 +219,12 @@ int main()
 	putsUART2((unsigned int*)"\tWelcome\n\r");
 	putsUART2((unsigned int*)"\t\t to\n\r");
 	putsUART2((unsigned int*)"Computer Interfacing : Assignment\n\r\n\r");
-	
 	putsUART2((unsigned int*)"Press S to enter Clock setting\n\r");
-	putChar(2,7);
-	putChar(2,7);
-	putChar(2,7);
 
-	while(1)     
-	{ 
-		temp_save();
+	while(1){
 		display_clock();
 		display_adc();
 		displayProgress();
-		setTime();
-
 	} 
 }
 
@@ -417,15 +235,13 @@ int main()
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void delay(unsigned long ms)  // delay 1 ms per count @ Crystal 8.0 MHz and PLL9x or SYSCLK = 72 MHz
-{
+void delay(unsigned long ms){// delay 1 ms per count @ Crystal 8.0 MHz and PLL9x or SYSCLK = 72 MHz
 	volatile unsigned long i,j;
 	for (i = 0; i < ms; i++ )
 		for (j = 0; j < 5525; j++ ); 
-	}
+}
 
-void USART_setup(void)
-{
+void USART_setup(void){
 	USART_InitTypeDef USART_InitStructure;
 	/* USARTx configured as follow:
 	- BaudRate = 115200 baud 
@@ -446,11 +262,9 @@ void USART_setup(void)
 	USART_Pin_setup(2, &USART_InitStructure);
 }
 
-void USART_Pin_setup(int COM, USART_InitTypeDef* USART_InitStruct)
-{
+void USART_Pin_setup(int COM, USART_InitTypeDef* USART_InitStruct){
 	GPIO_InitTypeDef GPIO_InitStructure;
-	if (COM == 1)
-	{
+	if (COM == 1){
 		/* Enable GPIO clock */
 		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
 		/* Enable the USART1 Pins Software Remapping */
@@ -467,11 +281,11 @@ void USART_Pin_setup(int COM, USART_InitTypeDef* USART_InitStruct)
 		GPIO_Init(GPIOB, &GPIO_InitStructure);
 		/* USART configuration */
 		USART_Init(USART1, USART_InitStruct);
+		/* USART Interupt config */
+		USART_ITConfig(USART1,USART_IT_RXNE,ENABLE);
 		/* Enable USART */
 		USART_Cmd(USART1, ENABLE);
-	}
-	else if (COM == 2)
-	{
+	}else if (COM == 2){
 		/* Enable GPIO clock */
 		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD | RCC_APB2Periph_AFIO, ENABLE);
 		/* Enable the USART2 Pins Software Remapping */
@@ -488,97 +302,75 @@ void USART_Pin_setup(int COM, USART_InitTypeDef* USART_InitStruct)
 		GPIO_Init(GPIOD, &GPIO_InitStructure);
 		/* USART configuration */
 		USART_Init(USART2, USART_InitStruct);
+		/* USART Interupt config */
+		USART_ITConfig(USART2,USART_IT_RXNE,ENABLE);
 		/* Enable USART */
 		USART_Cmd(USART2, ENABLE);
 	}
 }
 
-void ADC_setup(void) 
-{ 
+void ADC_setup(void){ 
 	GPIO_InitTypeDef GPIO_InitStructure; 
 	ADC_InitTypeDef ADC_InitStructure; 
-	
-  /* Enable ADC1 clock */ 
+
+	/* Enable ADC1 clock */ 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); 
-	
-  /* ADC Channel14 config --------------------------------------------------------*/ 
-  /* Relative to STM3210C-EVAL Board   */ 
-  /* Configure PC.04 (ADC Channel14) as analog input -------------------------*/ 
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;        //PC4 = ADC 
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN; 
-  GPIO_Init(GPIOC, &GPIO_InitStructure); 
-  
-  /* ADC1 Configuration ------------------------------------------------------*/ 
-  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent; 
-  ADC_InitStructure.ADC_ScanConvMode = DISABLE; 
-  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE; 
-  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None; 
-  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; 
-  ADC_InitStructure.ADC_NbrOfChannel = 1; 
-  ADC_Init(ADC1, &ADC_InitStructure); 
-  
-  /* ADC1 regular channel14 configuration */ 
-  /* Sampling Time 13.5 cycle of ADC Clock */ 
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 1, ADC_SampleTime_13Cycles5); 
-  
-  /* Enable ADC1 */ 
-  ADC_Cmd(ADC1, ENABLE); 
-  
-   ADC_ResetCalibration(ADC1);   // Enable ADC1 reset calibaration register  
-   while(ADC_GetResetCalibrationStatus(ADC1)); 
-   
-   ADC_StartCalibration(ADC1);   // Start ADC1 calibaration 
-   
-  /* Start ADC1 Software Conversion */ 
-   ADC_SoftwareStartConvCmd(ADC1, ENABLE);  
-} 
 
+	/* ADC Channel14 config --------------------------------------------------------*/ 
+	/* Relative to STM3210C-EVAL Board   */ 
+	/* Configure PC.04 (ADC Channel14) as analog input -------------------------*/ 
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;        //PC4 = ADC 
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN; 
+	GPIO_Init(GPIOC, &GPIO_InitStructure); 
 
-int putChar (int uart, int c) 
-{
-	if (uart == 1)
-	{
-			/* Loop until the end of transmission */
-		while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET)
-		{}
-			/* Place your implementation of fputc here */
-			/* e.g. write a character to the USART */
+	/* ADC1 Configuration ------------------------------------------------------*/ 
+	ADC_InitStructure.ADC_Mode = ADC_Mode_Independent; 
+	ADC_InitStructure.ADC_ScanConvMode = DISABLE; 
+	ADC_InitStructure.ADC_ContinuousConvMode = ENABLE; 
+	ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None; 
+	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; 
+	ADC_InitStructure.ADC_NbrOfChannel = 1; 
+	ADC_Init(ADC1, &ADC_InitStructure); 
+
+	/* ADC1 regular channel14 configuration */ 
+	/* Sampling Time 13.5 cycle of ADC Clock */ 
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 1, ADC_SampleTime_13Cycles5); 
+
+	/* Enable ADC1 */ 
+	ADC_Cmd(ADC1, ENABLE); 
+
+	ADC_ResetCalibration(ADC1);   // Enable ADC1 reset calibaration register  
+	while(ADC_GetResetCalibrationStatus(ADC1)); 
+
+	ADC_StartCalibration(ADC1);   // Start ADC1 calibaration 
+
+	/* Start ADC1 Software Conversion */ 
+	ADC_SoftwareStartConvCmd(ADC1, ENABLE);  
+}
+
+int putChar (int uart, int c){
+	if (uart == 1){
+		while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
 		USART_SendData(USART1,c);
-	} 
-	else
-	{
-				/* Loop until the end of transmission */
-		while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET)
-		{}
-				/* Place your implementation of fputc here */
-				/* e.g. write a character to the USART */
-	USART_SendData(USART2,c);
-	return c;
+	}else{
+		while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);
+		USART_SendData(USART2,c);
+		return c;
 	}	
 	return c;
 }
 
-
-
-void putsUART2(unsigned int *buffer)
-{
+void putsUART2(unsigned int *buffer){
 	char * temp_ptr = (char *) buffer;
 	int c;
-	while(*temp_ptr != '\0')    // End of String
-	{
+	while(*temp_ptr != '\0'){    // End of String
 		c = *temp_ptr++;
 		if (c == '\n')        // \n = CR = Enter
-		{
 			putChar (2, 0x0D);    // Enter
-		}
 		else if(c=='\r')        // \r = LF = Line Feed
-		{
 			putChar (2, 0x0A);     // Line Feed 
-		}
 		else
-		{
 			putChar (2, c);     // Character
-		}
 	}
 }
 
@@ -589,8 +381,7 @@ void putsUART2(unsigned int *buffer)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void RCC_setup(void)
-{
+void RCC_setup(void){
 	ErrorStatus HSEStartUpStatus;
 	/* RCC system reset(for debug purpose) */
 	RCC_DeInit();
@@ -598,8 +389,7 @@ void RCC_setup(void)
 	RCC_HSEConfig(RCC_HSE_ON);
 	/* Wait till HSE is ready */
 	HSEStartUpStatus = RCC_WaitForHSEStartUp();
-	if (HSEStartUpStatus == SUCCESS )
-	{
+	if (HSEStartUpStatus == SUCCESS ){
 		/* Enable Prefetch Buffer */
 		FLASH_PrefetchBufferCmd(FLASH_PrefetchBuffer_Enable);
 		/***************************************************/
@@ -622,31 +412,24 @@ void RCC_setup(void)
 		/* Enable PLL2 */
 		RCC_PLL2Cmd(ENABLE);
 		/* Wait till PLL2 is ready */
-		while (RCC_GetFlagStatus(RCC_FLAG_PLL2RDY) == RESET)
-		{}
+		while (RCC_GetFlagStatus(RCC_FLAG_PLL2RDY) == RESET);
 		/* PPL1 configuration: PLLCLK = (PLL2 / 5) * 9 = 72 MHz */
-	RCC_PREDIV1Config(RCC_PREDIV1_Source_PLL2, RCC_PREDIV1_Div5);
-	RCC_PLLConfig(RCC_PLLSource_PREDIV1, RCC_PLLMul_9);
+		RCC_PREDIV1Config(RCC_PREDIV1_Source_PLL2, RCC_PREDIV1_Div5);
+		RCC_PLLConfig(RCC_PLLSource_PREDIV1, RCC_PLLMul_9);
 		/* Enable PLL */
-	RCC_PLLCmd(ENABLE);
+		RCC_PLLCmd(ENABLE);
 		/* Wait till PLL is ready */
-	while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET)
-	{}
+		while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
 		/* Select PLL as system clock source */
-RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+		RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
 		/* Wait till PLL is used as system clock source */
-while (RCC_GetSYSCLKSource() != 0x08)
-{}
-}
-else
-{ 
-			/* If HSE fails to start-up, the application will have wrong clock configuration.
+		while (RCC_GetSYSCLKSource() != 0x08);
+	}else{ 
+		/* If HSE fails to start-up, the application will have wrong clock configuration.
 		User can add here some code to deal with this error */ 
 		/* Go to infinite loop */
-	while (1)
-	{
+		while (1);
 	}
-}
 }
 
 /*******************************************************************************
@@ -658,7 +441,6 @@ else
 *******************************************************************************/
 
 void GPIO_setup(){
-	
 	GPIO_InitTypeDef GPIO_InitStructure;   
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOE | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOC ,ENABLE);
 	
@@ -666,22 +448,7 @@ void GPIO_setup(){
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
-	
 }
-
-/**
-  * @brief  Inserts a delay time.
-  * @param  nTime: specifies the delay time length, in milliseconds.
-  * @retval None
-  */
-  void delay_ms(__IO uint32_t nTime)
-  {
-  	TimingDelay = nTime;
-
-  	while(TimingDelay != 0)
-  	{
-  	}
-  }
 
 /**
   * @brief  Decrements the TimingDelay variable.
@@ -689,27 +456,33 @@ void GPIO_setup(){
   * @retval None
   */
   
-void NVIC_setup(void) 
-{ 
-	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);   
-
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+void NVIC_setup(void){ 
+  NVIC_InitTypeDef NVIC_InitStructure;
+  NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);
+	
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn; //wakeup
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1; 
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2; 
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1; 
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; 
 	NVIC_Init(&NVIC_InitStructure); 
 
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 	NVIC_InitStructure.NVIC_IRQChannel = (uint8_t)SysTick_IRQn; // systick
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+	
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 } 	
 
-void EXTI_setup() 
-{ 
+void EXTI_setup(){ 
 	EXTI_InitTypeDef EXTI_InitStructure; 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO,ENABLE); 
 	
@@ -721,62 +494,27 @@ void EXTI_setup()
 	EXTI_Init(&EXTI_InitStructure); 
 }  	
 
-void EXTI0_IRQHandler(void)  
-{  
-//	static uint16_t count = 0; 
-	if(EXTI_GetITStatus(EXTI_Line0) != RESET) 
-	{ 
-  // Toggle LED7 at PE15 pin  
-		GPIO_WriteBit(GPIOE, GPIO_Pin_15,(BitAction)((1-GPIO_ReadOutputDataBit(GPIOE, GPIO_Pin_15)))); 
-		if(isHalt == 0){
+void EXTI0_IRQHandler(void){  
+	if(EXTI_GetITStatus(EXTI_Line0) != RESET){
+		if(isHalt == 0)
 			temp_average();
-		}
-		
 		EXTI_ClearITPendingBit(EXTI_Line0);   // Clear the EXTI line 0 pending bit  
 	} 
 } 		
-
-void TIM1_setup() 
-{ 
-	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure; 
-	 // Enable TIM1 clock 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1,ENABLE); 
-	 // Configuration TIM1 Interval counter 1 ms 
-	 // APB2 / ClockDivision / Prescaler / Period => Interval Time 
-	 // 72 MHz / 1 / 72 / 1000 => 1 kHz ???? 1 ms 
-
-	TIM_TimeBaseStructure.TIM_Prescaler = 71 ; 
-	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up; 
-	TIM_TimeBaseStructure.TIM_Period = 999; 
-	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1; 
-	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0x0; 
-	TIM_TimeBaseInit(TIM1,&TIM_TimeBaseStructure); 
-	 // TIM1 enable Update interrupt 
-	TIM_ITConfig(TIM1,TIM_IT_Update, ENABLE); 
-	 // TIM1 counter enable 
-	TIM_Cmd(TIM1,ENABLE); 
-} 
-
-void TIM1_UP_IRQHandler(void) 
-{ 
-	ms++; // Increment millisec 1 time 
-	TIM_ClearITPendingBit(TIM1,TIM_IT_Update); // Clear TIM1 Update pending bit 
-}
 
 void Systick_setup(void){
 	//Select source clock between AHB (MAX 72 MHz) and AHB/8 (MAX 72/8 = 9 MHz) by using
 	//SysTick_CLKSource_HCLK and SysTick_CLKSource_HCLK_Div8 respectively
 	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
 	//Config counter
-	if (SysTick_Config(72000-1))  // 72 MHz ? 72,000 = 1 kHz or 1 ms
-	{ 
+	if (SysTick_Config(72000-1)){  // 72 MHz ? 72,000 = 1 kHz or 1 ms
 		/* Capture error */ 
 		putsUART2((unsigned int *)"Systick Config Error");
 		while (1);
 	}
 }
-void SysTick_Handler(void)
-{
+
+void SysTick_Handler(void){
 	if(!isSet)
 		sys_ms++; // Increse millisec 1 time
 	if(sys_ms%1000 == 0){
@@ -794,9 +532,128 @@ void SysTick_Handler(void)
 			hh=0;
 		}	
 	}
+	if(sys_ms%500 == 0){
+		temp_save();
+	}
 	sys_ms2++;
 	if(sys_ms2%1000 == 0){
 		halt();
 	}
 }
 
+void USART2_IRQHandler(void){
+	char in;
+	if(USART_GetITStatus(USART2,USART_IT_RXNE) != RESET){
+		in = (USART_ReceiveData(USART2));
+		if(!isSet && in == 's'){
+			isSet = 1;
+			putsUART2((unsigned int*)"Set clock\n\r");
+			putsUART2((unsigned int*)"Press h to set Hour\n\r");
+			putsUART2((unsigned int*)"Press m to set Minute\n\r");
+			putsUART2((unsigned int*)"Press c to set Second\n\r");
+			putChar(2,7);
+
+		}else if(isSet){
+			if(in=='c') {
+				setSec=1;
+				setMin=0;
+				setHour=0;
+				secDigit=1;
+				putsUART2((unsigned int*)"Set Second\n\r");
+				putsUART2((unsigned int*)"Second (SS) = ");
+				
+			}else if(in=='m') {
+				setSec=0;
+				setMin=1;
+				setHour=0;
+				secDigit=1;
+				putsUART2((unsigned int*)"Set Minute\n\r");
+				putsUART2((unsigned int*)"Minute (MM) = ");
+			}else if(in=='h') {
+				setSec=0;
+				setMin=0;
+				setHour=1;
+				secDigit=1;
+				putsUART2((unsigned int*)"Set Hour\n\r");
+				putsUART2((unsigned int*)"Hour (HH) = ");
+
+			}else if(setSec){
+				if(secDigit){
+					if(in>='0' && in<='5'){
+						putChar(2,in);
+						ss = ss%10+10*(in-'0');
+						secDigit=0;
+						firstDigit=1;
+					}else{
+						putsUART2((unsigned int*)"Wrong Input\n\r");
+						putChar(2,7);
+					}
+				}else if(firstDigit){
+					if(in>='0' && in<='9'){
+						putChar(2,in);
+						putsUART2((unsigned int*)"\n\r");
+						ss = (ss/10)*10+in-'0';
+						secDigit=0;
+						firstDigit=0;
+						setSec=0;
+					}else{
+						putsUART2((unsigned int*)"Wrong Input\n\r");
+						putChar(2,7);
+					}
+				}
+			}else if(setMin){
+				if(secDigit){
+					if(in>='0' && in<='5'){
+						putChar(2,in);
+						mm = mm%10+10*(in-'0');
+						secDigit=0;
+						firstDigit=1;
+					}else{
+						putsUART2((unsigned int*)"Wrong Input\n\r");
+						putChar(2,7);
+					}
+				}else if(firstDigit){
+					if(in>='0' && in<='9'){
+						putChar(2,in);
+						putsUART2((unsigned int*)"\n\r");
+						mm = (mm/10)*10+in-'0';
+						secDigit=0;
+						firstDigit=0;
+						setMin=0;
+					}else{
+						putsUART2((unsigned int*)"Wrong Input\n\r");
+						putChar(2,7);
+					}
+				}
+			}else if(setHour){
+				if(secDigit){
+					if(in>='0' && in<='2'){
+						putChar(2,in);
+						hh = hh%10+10*(in-'0');
+						secDigit=0;
+						firstDigit=1;
+					}else{
+						putsUART2((unsigned int*)"Wrong Input\n\r");
+						putChar(2,7);
+					}
+				}else if(firstDigit){
+					if((in>='0' && in<='9' && (hh/10)<2) || (in>='0' && in<='3' && (hh/10)==2)){
+						putChar(2,in);
+						putsUART2((unsigned int*)"\n\r");
+						hh = (hh/10)*10+in-'0';
+						secDigit=0;
+						firstDigit=0;
+						setHour=0;
+					}else{
+						putsUART2((unsigned int*)"Wrong Input\n\r");
+						putChar(2,7);
+					}
+				}
+			}else if((in==10 || in==13)){
+				putsUART2((unsigned int*)"Clock setting finish\n\r");
+				isSet=0;
+			} 
+		}	
+		USART_ClearITPendingBit(USART2,USART_IT_RXNE);
+	}
+}
