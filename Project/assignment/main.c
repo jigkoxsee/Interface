@@ -118,7 +118,7 @@ void alert_fn(){
 		alertText[i] = ' ';
 	}
 
-		if(temp < 80){
+		if(temp <= 80){ // ko <=
 			isHalt = 0;
 			for(i = 0;i < 20;i++){
 				alertText[i] = ' ';
